@@ -8,6 +8,17 @@ from urllib.parse import urlencode
 import requests
 from datadog import ThreadStats, initialize
 
+# Add these lines after the existing imports:
+import signal
+
+class SigTermException(BaseException):
+    pass
+
+def signal_handler(sig, frame):
+    raise SigTermException("Received SIGTERM")
+
+signal.signal(signal.SIGTERM, signal_handler)
+
 rootLogger = logging.getLogger()
 rootLogger.setLevel(logging.DEBUG)
 
@@ -42,29 +53,38 @@ ns_api_url = ns_base_url + "/api/v1/entries.json?" + urlencode({"token": ns_toke
 
 last_record_timestamp = 0
 while True:
-    logging.info(f"Will hit API at '{ns_api_url}'.")
-    response = requests.get(ns_api_url)
-    if response.status_code != 200:
-        logging.warn(f"Non-200 response: '{response.text}' - sleeping...")
+    try:
+        # Existing loop code remains here (from "logging.info(f"Will hit API..." to the final "sleep(60)")
+        logging.info(f"Will hit API at '{ns_api_url}'.")
+        response = requests.get(ns_api_url)
+        if response.status_code != 200:
+            logging.warn(f"Non-200 response: '{response.text}' - sleeping...")
+            sleep(60)
+            continue
+
+        records = response.json()
+        logging.debug(f"Received records: '{records}")
+
+        if len(records) != 1:
+            logging.warn("Received other than exactly one record - sleeping...")
+            sleep(60)
+            continue
+
+        latest_cgm_timestamp = records[0]["date"]
+        if latest_cgm_timestamp <= last_record_timestamp:
+            logging.info(f"Already have the latest CGM value from '{latest_cgm_timestamp}'.")
+            sleep(60)
+            continue
+
+        latest_cgm_value = records[0]["sgv"]
+        logging.info(f"Recording new CGM value of '{latest_cgm_value}' from timestamp '{latest_cgm_timestamp}'.")
+        statsd.gauge("nightscout.cgm.latest", latest_cgm_value)
+        last_record_timestamp = latest_cgm_timestamp
+        sleep(60)
+    except (KeyboardInterrupt, SigTermException):
+        logging.info("Exiting due to signal...")
+        sys.exit(0)
+    except Exception as e:
+        logging.error(f"Unexpected error: {str(e)}")
         sleep(60)
         continue
-
-    records = response.json()
-    logging.debug(f"Received records: '{records}")
-
-    if len(records) != 1:
-        logging.warn("Received other than exactly one record - sleeping...")
-        sleep(60)
-        continue
-
-    latest_cgm_timestamp = records[0]["date"]
-    if latest_cgm_timestamp <= last_record_timestamp:
-        logging.info(f"Already have the latest CGM value from '{latest_cgm_timestamp}'.")
-        sleep(60)
-        continue
-
-    latest_cgm_value = records[0]["sgv"]
-    logging.info(f"Recording new CGM value of '{latest_cgm_value}' from timestamp '{latest_cgm_timestamp}'.")
-    statsd.gauge("nightscout.cgm.latest", latest_cgm_value)
-    last_record_timestamp = latest_cgm_timestamp
-    sleep(60)
