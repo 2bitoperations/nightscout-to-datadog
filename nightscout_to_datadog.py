@@ -1,16 +1,19 @@
 #!/usr/bin/python3
+# Standard library imports
 import json
 import logging
 import os
+import signal
 import sys
 from time import sleep
 from urllib.parse import urlencode
 
+# Third-party imports
 import requests
 from datadog import ThreadStats, initialize
 
-# Add these lines after the existing imports:
-import signal
+
+# --- Signal Handling ---
 
 class SigTermException(BaseException):
     pass
