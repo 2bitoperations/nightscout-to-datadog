@@ -5,6 +5,7 @@ import logging
 import os
 import signal
 import sys
+from datetime import datetime, timedelta, timezone
 from time import sleep
 from urllib.parse import urlencode
 
@@ -63,29 +64,46 @@ if not ns_token:
     logging.error("NIGHTSCOUT_TOKEN env var required")
     sys.exit(1)
 
-ns_api_url = ns_base_url + "/api/v1/entries.json?" + urlencode({"token": ns_token, "count": "1"})
-
 
 # --- Main Loop ---
 
 last_record_timestamp = 0
 while True:
     try:
-        logging.info(f"Will hit API at '{ns_api_url}'.")
+        # Calculate timestamp for 2 minutes ago in milliseconds since epoch
+        now_utc = datetime.now(timezone.utc)
+        two_minutes_ago = now_utc - timedelta(minutes=2)
+        timestamp_ms = int(two_minutes_ago.timestamp() * 1000)
+
+        # Construct API URL with date filter
+        query_params = {
+            "token": ns_token,
+            "count": "1",
+            "find[date][$gte]": str(timestamp_ms)
+        }
+        ns_api_url = ns_base_url + "/api/v1/entries.json?" + urlencode(query_params)
+
+        logging.info(f"Will hit API for records since {two_minutes_ago.isoformat()} at '{ns_api_url}'.")
         response = requests.get(ns_api_url)
 
         if response.status_code != 200:
-            logging.warning(f"Non-200 response: '{response.text}' - sleeping...")
+            logging.warning(f"Non-200 response: '{response.status_code} {response.reason}' - sleeping...")
             sleep(60)
             continue
 
         records = response.json()
-        logging.debug(f"Received records: '{records}'")
+        logging.debug(f"Received records: {json.dumps(records)}") # Log full JSON for debug
 
-        if len(records) != 1:
-            logging.warning("Received other than exactly one record - sleeping...")
+        # Check if any records were returned within the time window
+        if not records:
+            logging.info("No new CGM records found in the last 2 minutes.")
             sleep(60)
             continue
+
+        # We expect at most one record due to "count=1"
+        if len(records) > 1:
+             logging.warning(f"Expected 0 or 1 record with count=1, but got {len(records)}. Processing the first one.")
+             # Fall through to process the first record
 
         record = records[0]
         pretty_records = json.dumps(records, indent=4, sort_keys=True)
@@ -101,14 +119,17 @@ while True:
             sleep(60)
             continue
 
+        # The API filter ensures the record is recent, but we still check against the last processed
+        # timestamp to avoid duplicates in case of overlapping requests or clock skew issues.
         latest_cgm_timestamp = record["date"]
         if latest_cgm_timestamp <= last_record_timestamp:
-            logging.info(f"Already have the latest CGM value from timestamp '{latest_cgm_timestamp}'.")
+            logging.info(f"Already processed CGM value from timestamp '{latest_cgm_timestamp}' ({datetime.fromtimestamp(latest_cgm_timestamp/1000, tz=timezone.utc).isoformat()}). Skipping.")
             sleep(60)
             continue
 
         latest_cgm_value = record["sgv"]
-        logging.info(f"Recording new CGM value of '{latest_cgm_value}' from timestamp '{latest_cgm_timestamp}'.")
+        record_time_iso = datetime.fromtimestamp(latest_cgm_timestamp/1000, tz=timezone.utc).isoformat()
+        logging.info(f"Recording new CGM value of '{latest_cgm_value}' from timestamp '{latest_cgm_timestamp}' ({record_time_iso}).")
         statsd.gauge("nightscout.cgm.latest", latest_cgm_value)
         last_record_timestamp = latest_cgm_timestamp
         sleep(60)
