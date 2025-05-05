@@ -15,13 +15,19 @@ from datadog import ThreadStats, initialize
 
 # --- Signal Handling ---
 
+
 class SigTermException(BaseException):
     pass
+
 
 def signal_handler(sig, frame):
     raise SigTermException("Received SIGTERM")
 
+
 signal.signal(signal.SIGTERM, signal_handler)
+
+
+# --- Logging Setup ---
 
 rootLogger = logging.getLogger()
 rootLogger.setLevel(logging.DEBUG)
@@ -32,15 +38,19 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 rootLogger.addHandler(ch)
 
-logging.info("Starting...")
 
-logging.info("Datadog initialized...")
+# --- Initialization ---
+
+logging.info("Starting...")
 
 initialize(api_key=os.getenv("DATADOG_API_KEY"), app_key=os.getenv("DATADOG_APP_KEY"), api_host="https://us5.datadoghq.com")
 statsd = ThreadStats()
 statsd.start()
-
+logging.info("Datadog initialized...")
 statsd.event("nightscout2datadog starting", "nightscout_to_datadog starting")
+
+
+# --- Configuration ---
 
 ns_base_url = os.getenv("NIGHTSCOUT_BASE_URL")
 ns_token = os.getenv("NIGHTSCOUT_TOKEN")
@@ -53,24 +63,27 @@ if not ns_token:
     logging.error("NIGHTSCOUT_TOKEN env var required")
     sys.exit(1)
 
-ns_api_url = ns_base_url + "/api/v1/entries.json?" + urlencode({"token": ns_token, "count":"1"})
+ns_api_url = ns_base_url + "/api/v1/entries.json?" + urlencode({"token": ns_token, "count": "1"})
+
+
+# --- Main Loop ---
 
 last_record_timestamp = 0
 while True:
     try:
-        # Existing loop code remains here (from "logging.info(f"Will hit API..." to the final "sleep(60)")
         logging.info(f"Will hit API at '{ns_api_url}'.")
         response = requests.get(ns_api_url)
+
         if response.status_code != 200:
-            logging.warn(f"Non-200 response: '{response.text}' - sleeping...")
+            logging.warning(f"Non-200 response: '{response.text}' - sleeping...")
             sleep(60)
             continue
 
         records = response.json()
-        logging.debug(f"Received records: '{records}")
+        logging.debug(f"Received records: '{records}'")
 
         if len(records) != 1:
-            logging.warn("Received other than exactly one record - sleeping...")
+            logging.warning("Received other than exactly one record - sleeping...")
             sleep(60)
             continue
 
@@ -99,6 +112,7 @@ while True:
         statsd.gauge("nightscout.cgm.latest", latest_cgm_value)
         last_record_timestamp = latest_cgm_timestamp
         sleep(60)
+
     except (KeyboardInterrupt, SigTermException):
         logging.info("Exiting due to signal...")
         sys.exit(0)
