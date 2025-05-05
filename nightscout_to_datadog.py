@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import json
 import logging
 import os
 import sys
@@ -70,13 +71,27 @@ while True:
             sleep(60)
             continue
 
-        latest_cgm_timestamp = records[0]["date"]
-        if latest_cgm_timestamp <= last_record_timestamp:
-            logging.info(f"Already have the latest CGM value from '{latest_cgm_timestamp}'.")
+        record = records[0]
+        pretty_records = json.dumps(records, indent=4, sort_keys=True)
+
+        # Validate required fields
+        if "date" not in record:
+            logging.error(f"Missing 'date' field in record. Payload:\n{pretty_records}")
             sleep(60)
             continue
 
-        latest_cgm_value = records[0]["sgv"]
+        if "sgv" not in record:
+            logging.error(f"Missing 'sgv' field in record. Payload:\n{pretty_records}")
+            sleep(60)
+            continue
+
+        latest_cgm_timestamp = record["date"]
+        if latest_cgm_timestamp <= last_record_timestamp:
+            logging.info(f"Already have the latest CGM value from timestamp '{latest_cgm_timestamp}'.")
+            sleep(60)
+            continue
+
+        latest_cgm_value = record["sgv"]
         logging.info(f"Recording new CGM value of '{latest_cgm_value}' from timestamp '{latest_cgm_timestamp}'.")
         statsd.gauge("nightscout.cgm.latest", latest_cgm_value)
         last_record_timestamp = latest_cgm_timestamp
