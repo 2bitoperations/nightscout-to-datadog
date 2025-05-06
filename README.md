@@ -13,16 +13,10 @@ This script fetches the latest Continuous Glucose Monitoring (CGM) data from a N
 2.  **Create and activate a Python virtual environment:**
     Using a virtual environment is recommended to isolate project dependencies.
 
-    *   **Using `uv` (Recommended):**
-        If you have `uv` installed (see https://github.com/astral-sh/uv for installation instructions):
+    *   **Using `uv`:**
+        If you have `uv` installed (see https://github.com/astral-sh/uv for installation instructions), create a virtual environment:
         ```bash
         uv venv .venv
-        ```
-
-    *   **Using standard `python3`:**
-        Alternatively, you can use the built-in `venv` module:
-        ```bash
-        python3 -m venv .venv
         ```
 
     Then, activate the environment:
@@ -41,21 +35,10 @@ This script fetches the latest Continuous Glucose Monitoring (CGM) data from a N
 3.  **Install dependencies:**
     Project dependencies are defined in `pyproject.toml`.
 
-    *   **Using `uv` (Recommended):**
-        Install the project and its dependencies into the activated virtual environment:
+    *   **Using `uv`:**
+        Install the project and its dependencies (defined in `pyproject.toml`) into the activated virtual environment:
         ```bash
         uv pip install .
-        ```
-        This command reads the `pyproject.toml` file.
-
-    *   **Using `pip`:**
-        Alternatively, you can use `pip`. If your version of `pip` supports `pyproject.toml` (pip 19+), you can run:
-        ```bash
-        pip install .
-        ```
-        Or, you can install from the `requirements.txt` file (note: `pyproject.toml` is the primary source of dependencies; ensure `requirements.txt` is synchronized if you modify dependencies and use this method):
-        ```bash
-        pip install -r requirements.txt
         ```
 
 ## Configuration
@@ -80,10 +63,10 @@ Alternatively, consider using a tool like `direnv` or storing them securely acco
 
 ## Running the Script
 
-Ensure your virtual environment is activated and the required environment variables are set. Then, run the script:
+Ensure your virtual environment is activated and the required environment variables are set. Then, run the script using `uv`:
 
 ```bash
-python nightscout_to_datadog.py
+uv run nightscout_to_datadog.py
 ```
 
 The script will start, log its initialization steps, and then enter a loop:
