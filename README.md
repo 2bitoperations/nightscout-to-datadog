@@ -12,10 +12,21 @@ This script fetches the latest Continuous Glucose Monitoring (CGM) data from a N
 
 2.  **Create and activate a Python virtual environment:**
     Using a virtual environment is recommended to isolate project dependencies.
-    ```bash
-    # Create the environment
-    python3 -m venv .venv
 
+    *   **Using `uv` (Recommended):**
+        If you have `uv` installed (see https://github.com/astral-sh/uv for installation instructions):
+        ```bash
+        uv venv .venv
+        ```
+
+    *   **Using standard `python3`:**
+        Alternatively, you can use the built-in `venv` module:
+        ```bash
+        python3 -m venv .venv
+        ```
+
+    Then, activate the environment:
+    ```bash
     # Activate the environment (Linux/macOS - bash/zsh)
     source .venv/bin/activate
 
@@ -28,16 +39,23 @@ This script fetches the latest Continuous Glucose Monitoring (CGM) data from a N
     Your shell prompt should now indicate that you are inside the `.venv` environment.
 
 3.  **Install dependencies:**
-    The required Python packages are listed in `requirements.txt`. You can install them using either `pip` (the standard Python package installer) or `uv` (a faster alternative).
+    Project dependencies are defined in `pyproject.toml`.
+
+    *   **Using `uv` (Recommended):**
+        Install the project and its dependencies into the activated virtual environment:
+        ```bash
+        uv pip install .
+        ```
+        This command reads the `pyproject.toml` file.
 
     *   **Using `pip`:**
+        Alternatively, you can use `pip`. If your version of `pip` supports `pyproject.toml` (pip 19+), you can run:
+        ```bash
+        pip install .
+        ```
+        Or, you can install from the `requirements.txt` file (note: `pyproject.toml` is the primary source of dependencies; ensure `requirements.txt` is synchronized if you modify dependencies and use this method):
         ```bash
         pip install -r requirements.txt
-        ```
-
-    *   **Using `uv`:** (If you have `uv` installed: https://github.com/astral-sh/uv)
-        ```bash
-        uv pip install -r requirements.txt
         ```
 
 ## Configuration
