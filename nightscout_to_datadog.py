@@ -130,6 +130,7 @@ while True:
             sleep(60)
             continue
 
+        latest_cgm_value = record["sgv"]
         logging.info(f"Recording new CGM value: {latest_cgm_value} (Timestamp: {latest_cgm_timestamp} / {record_time_iso})")
         statsd.gauge("nightscout.cgm.latest", latest_cgm_value)
         last_record_timestamp = latest_cgm_timestamp
