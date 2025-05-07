@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+backend-path = "."
+
+[project]
+name = "nightscout-to-datadog"
+version = "0.1.0"
+description = "Fetches Nightscout CGM data and sends it to Datadog."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "datadog~=0.51.0",
+    "requests~=2.32.3",
+]
