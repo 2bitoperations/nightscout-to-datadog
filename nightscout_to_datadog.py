@@ -73,17 +73,17 @@ while True:
         # Calculate timestamp for 2 minutes ago in milliseconds since epoch
         now_utc = datetime.now(timezone.utc)
         two_minutes_ago = now_utc - timedelta(minutes=2)
-        timestamp_ms = int(two_minutes_ago.timestamp() * 1000)
+        timestamp_sec = int(two_minutes_ago.timestamp())
 
         # Construct API URL with date filter
         query_params = {
             "token": ns_token,
             "count": "1", # Fetch at most 1 record
-            "find[date][$gte]": str(timestamp_ms) # Filter for records >= 2 minutes ago
+            "find[date][$gte]": str(timestamp_sec) # Filter for records >= 2 minutes ago
         }
         ns_api_url = ns_base_url + "/api/v1/entries.json?" + urlencode(query_params)
 
-        logging.info(f"Querying API for records since {two_minutes_ago.isoformat()} ({timestamp_ms})")
+        logging.info(f"Querying API for records since {two_minutes_ago.isoformat()} ({timestamp_sec})")
         logging.debug(f"API URL: {ns_api_url}") # Log full URL only at debug level
         response = requests.get(ns_api_url)
 
